@@ -22,3 +22,26 @@ export const DIALOGUES = {
     ],
   },
 }
+
+const TOLEDO_DIALOGUES = {
+  'd-toledo-arrival': {
+    title: 'Toledo — Arrival',
+    lines: [
+      { who: 'narrator', text: 'You arrive in Toledo by train. The old city walls rise around you.' },
+      { who: 'narrator', text: 'A local notices you looking lost.' },
+      { who: 'local', es: '¿Necesitas ayuda?', en: 'Do you need help?' },
+      { who: 'narrator', text: 'You recognise this. You know "necesitar" means "to need".' },
+      { who: 'local', es: 'Muy bien. ¿Qué quieres?', en: 'Very good. What do you want?' },
+    ],
+  },
+  'd-toledo-checkpoint': {
+    title: 'Toledo — Checkpoint',
+    lines: [
+      { who: 'narrator', text: 'You just used a softened verb form to answer a real question.' },
+      { who: 'local', es: '¡Perfecto! Aquí tienes.', en: 'Perfect! Here you go.' },
+      { who: 'narrator', text: 'Toledo is the second step on your Ruta. Next: Valencia.' },
+    ],
+  },
+}
+
+Object.assign(DIALOGUES, TOLEDO_DIALOGUES)

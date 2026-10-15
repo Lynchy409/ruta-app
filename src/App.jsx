@@ -5,6 +5,7 @@ import { recordAttempt, completeActivity, grantReward } from './domain/progress.
 import { CharacterEditor } from './components/CharacterEditor.jsx'
 import { Scene } from './components/Scene.jsx'
 import { Activity } from './components/Activity.jsx'
+import { Runner } from './components/Runner.jsx'
 import { JourneyMap } from './components/JourneyMap.jsx'
 
 export default function App() {
@@ -133,5 +134,7 @@ function ChapterPlayer({ chapterId, stepIndex, onRecord, onStepDone }) {
     </div>
     {step.kind === 'dialogue' && <Scene id={step.id} onDone={() => onStepDone(step.id)} />}
     {step.kind === 'activity' && <Activity id={step.id} onFinish={onStepDone} onRecord={onRecord} />}
+    {step.kind === 'runner' && <Runner id={step.id} onFinish={onStepDone} onRecord={onRecord} />}
+    {step.kind === 'runner-activity' && <Runner id={step.id} onFinish={onStepDone} onRecord={onRecord} />}
   </div>
 }

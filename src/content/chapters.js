@@ -18,9 +18,24 @@ export const CHAPTERS = {
     reward: 100,
     unlock: 'toledo-arrival',
   },
-  // Future chapters are placeholders, not playable
   'toledo-arrival': {
     title: 'Toledo — Arrival',
+    subtitle: 'Use your Madrid words at speed. Meet e → ie softening.',
+    sequence: [
+      { kind: 'dialogue', id: 'd-toledo-arrival' },
+      { kind: 'activity', id: 'a-ie-intro-1' },
+      { kind: 'activity', id: 'a-ie-intro-2' },
+      { kind: 'runner', id: 'run-toledo-1' },
+      { kind: 'activity', id: 'a-toledo-task-1' },
+      { kind: 'activity', id: 'a-toledo-checkpoint-1' },
+      { kind: 'dialogue', id: 'd-toledo-checkpoint' },
+    ],
+    reward: 150,
+    unlock: 'valencia-arrival',
+  },
+  // Future chapters are placeholders, not playable
+  'valencia-arrival': {
+    title: 'Valencia — Arrival',
     subtitle: 'Not yet built.',
     locked: true,
   },

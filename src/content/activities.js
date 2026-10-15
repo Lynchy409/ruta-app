@@ -99,3 +99,51 @@ export const MADRID_SEQUENCE = [
   { kind: 'activity', id: 'a-checkpoint-1' },
   { kind: 'dialogue', id: 'd-checkpoint' },
 ]
+
+// Toledo arrival — e → ie softening intro (lessons 15-17)
+Object.assign(ACTIVITIES, {
+  'a-ie-intro-1': {
+    type: 'recognize',
+    prompt: 'You know quiero. Now imagine a verb like tener. What is the "he/she" form?',
+    options: ['tene', 'tiene', 'teno'],
+    answer: 'tiene',
+    concept: 'r-e-ie',
+    hint: 'The stressed e in the stem splits into ie in the present tense.',
+    explanation: 'tener → tiene. The stressed e splits. This is not predictable per verb; you have to learn each one.',
+    accepted: ['tiene'],
+  },
+  'a-ie-intro-2': {
+    type: 'recognize',
+    prompt: 'What is the "I" form of pensar (to think)?',
+    options: ['penso', 'pienso', 'pensar'],
+    answer: 'pienso',
+    concept: 'r-e-ie',
+    hint: 'Same e → ie pattern as tengo → tengo / tiene.',
+    explanation: 'pensar → pienso. pienso + to-form also means "I plan to".',
+    accepted: ['pienso'],
+  },
+  'a-toledo-task-1': {
+    type: 'construct',
+    prompt: 'Build the sentence: "I want the jacket" using the softened "I" form',
+    tiles: ['Quiero', 'la', 'chaqueta', 'Queremos', 'el', 'chaqueta'],
+    answer: 'Quiero la chaqueta',
+    concept: 'w-querer',
+    hint: 'Querer softens in the "I" form: quiero.',
+    explanation: 'Quiero is the softened "I" form of querer.',
+    accepted: ['quiero la chaqueta'],
+  },
+  'a-toledo-checkpoint-1': {
+    type: 'produce',
+    prompt: 'A local asks: "¿Qué quieres?" — What do you want?',
+    expectedKeywords: ['quiero', 'la', 'chaqueta'],
+    concept: 'w-querer',
+    hint: 'Use quiero, the softened "I" form. Then la chaqueta.',
+    explanation: 'Quiero la chaqueta. You have now produced a softened verb form from scratch.',
+    accepted: ['quiero la chaqueta', 'quiero chaqueta', 'la chaqueta quiero'],
+    feedbackFor: {
+      'queremos la chaqueta': 'That is "we want". For "I want" use quiero.',
+      'querer la chaqueta': 'That is the "to" form. You need the "I" form: quiero.',
+    },
+  },
+}
+)
