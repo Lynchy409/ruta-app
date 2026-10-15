@@ -1,4 +1,1 @@
-{"name":"ruta-app","private":true,"version":"0.1.0","type":"module",
-"scripts":{"dev":"vite","build":"vite build","preview":"vite preview"},
-"dependencies":{"react":"^18.3.1","react-dom":"^18.3.1","@capacitor/core":"^6.1.2","@capacitor/android":"^6.1.2"},
-"devDependencies":{"vite":"^5.4.8","@vitejs/plugin-react":"^4.3.2","@capacitor/cli":"^6.1.2"}}
+{"name":"ruta-app","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite","build":"vite build","preview":"vite preview"},"dependencies":{"@babel/core":"^7.29.7","@babel/plugin-transform-modules-commonjs":"^7.29.7","@babel/preset-react":"^7.29.7","@capacitor/android":"^6.1.2","@capacitor/core":"^6.1.2","jsdom":"^29.1.1","react":"^18.3.1","react-dom":"^18.3.1"},"devDependencies":{"@capacitor/cli":"^6.1.2","@vitejs/plugin-react":"^4.3.2","vite":"^5.4.8"}}

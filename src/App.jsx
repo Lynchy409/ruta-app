@@ -1,127 +1,137 @@
-import { useEffect, useState } from 'react'
-import { LEVELS, MADRID_DIALOGUE, SIGN_ROUNDS, TOLEDO } from './content.js'
-
-const fresh = { character: null, xp: 0, completed: [] }
-const load = () => fresh
+import { useState, useEffect, useCallback } from 'react'
+import { CHAPTERS } from './content/chapters.js'
+import { loadSave, saveSave, resetSave, exportSave, importSave } from './domain/persistence.js'
+import { recordAttempt, completeActivity, grantReward } from './domain/progress.js'
+import { CharacterEditor } from './components/CharacterEditor.jsx'
+import { Scene } from './components/Scene.jsx'
+import { Activity } from './components/Activity.jsx'
+import { JourneyMap } from './components/JourneyMap.jsx'
 
 export default function App() {
-  const [save, setSave] = useState(load)
+  const [save, setSave] = useState(loadSave)
   const [screen, setScreen] = useState('title')
-  const complete = (id, xp) => {
-    setSave(s => ({ ...s, xp: s.xp + xp, completed: s.completed.includes(id) ? s.completed : [...s.completed, id] }))
-    setScreen('map')
+  const [chapterId, setChapterId] = useState(null)
+  const [stepIndex, setStepIndex] = useState(0)
+
+  useEffect(() => { saveSave(save) }, [save])
+
+  function update(mut) { setSave(s => mut(s)) }
+
+  function startChapter(id) {
+    setChapterId(id)
+    setStepIndex(0)
+    setScreen('chapter')
   }
+
+  function onRecord(conceptId, mode, correct, hint, mistakeType) {
+    update(s => recordAttempt(s, conceptId, mode, correct, hint, mistakeType))
+  }
+
+  function onStepDone(stepId, correct) {
+    const ch = CHAPTERS[chapterId]
+    const step = ch.sequence[stepIndex]
+    update(s => {
+      let ns = s
+      if (step.kind === 'activity') ns = completeActivity(ns, step.id)
+      return ns
+    })
+    if (stepIndex < ch.sequence.length - 1) {
+      setStepIndex(stepIndex + 1)
+    } else {
+      // Chapter complete: grant one-time reward and go to map
+      update(s => {
+        let ns = s
+        ns = completeActivity(ns, `chapter:${chapterId}`)
+        ns = grantReward(ns, `chapter:${chapterId}`, ch.reward)
+        ns = { ...ns, journey: { ...ns.journey, chapterId } }
+        return ns
+      })
+      setScreen('map')
+    }
+  }
+
+  const onRecordCb = useCallback(onRecord, [save])
+
   return <div className="app">
-    {screen === 'title' && <Title onStart={() => setScreen(save.character ? 'map' : 'create')} onReset={() => setSave(fresh)} hasSave={!!save.character} />}
-    {screen === 'create' && <Create onDone={c => { setSave(s => ({ ...s, character: c })); setScreen('map') }} />}
-    {screen === 'map' && <WorldMap save={save} onPlay={setScreen} />}
-    {screen === 'madrid' && <Dialogue onDone={() => complete('madrid', 20)} />}
-    {screen === 'signs' && <SignRunner onDone={() => complete('signs', 50)} onQuit={() => setScreen('map')} />}
-    {screen === 'toledo' && <Toledo onDone={() => complete('toledo', 40)} />}
+    {screen === 'title' && <Title
+      hasChar={!!save.character}
+      onStart={() => setScreen(save.character ? 'map' : 'create')}
+      onEdit={() => setScreen('create')}
+      onReset={() => { setSave(resetSave()); setScreen('title') }}
+      onExport={() => {
+        const blob = new Blob([exportSave(save)], { type: 'application/json' })
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = 'ruta-save.json'
+        a.click()
+      }}
+      onImport={() => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = '.json'
+        input.onchange = async (e) => {
+          const file = e.target.files[0]
+          if (!file) return
+          try {
+            const text = await file.text()
+            const imported = importSave(text)
+            setSave(imported)
+            setScreen('map')
+          } catch (err) {
+            alert('Could not import: ' + err.message)
+          }
+        }
+        input.click()
+      }}
+    />}
+    {screen === 'create' && <CharacterEditor
+      initial={save.character}
+      hasExisting={!!save.character}
+      onDone={c => { update(s => ({ ...s, character: c })); setScreen('map') }}
+      onCancel={() => setScreen(save.character ? 'map' : 'title')}
+    />}
+    {screen === 'map' && <JourneyMap
+      save={save}
+      onOpenChapter={startChapter}
+      onEditCharacter={() => setScreen('create')}
+    />}
+    {screen === 'chapter' && (
+      <ChapterPlayer
+        chapterId={chapterId}
+        stepIndex={stepIndex}
+        onRecord={onRecordCb}
+        onStepDone={onStepDone}
+      />
+    )}
   </div>
 }
 
-function Title({ onStart, onReset, hasSave }) {
+function Title({ hasChar, onStart, onEdit, onReset, onExport, onImport }) {
   return <div className="center">
-    <h1 className="logo">Ruta</h1><p className="sub">Road to Fluent</p>
-    <button onClick={onStart}>{hasSave ? 'Continue' : 'Start journey'}</button>
-    {hasSave && <button className="ghost" onClick={onReset}>Reset progress</button>}
+    <h1 className="logo">Ruta</h1>
+    <p className="sub">Road to Fluent</p>
+    <button onClick={onStart}>{hasChar ? 'Continue journey' : 'Start journey'}</button>
+    {hasChar && <button className="ghost" onClick={onEdit}>Edit traveller</button>}
+    {hasChar && <>
+      <button className="ghost" onClick={onExport}>Export progress</button>
+      <button className="ghost" onClick={onImport}>Import progress</button>
+      <button className="ghost danger" onClick={onReset}>Reset progress</button>
+    </>}
   </div>
 }
 
-const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524']
-const SHIRTS = ['#e63946', '#2a9d8f', '#457b9d', '#f4a261']
-function Avatar({ c, size = 90 }) {
-  return <svg width={size} height={size} viewBox="0 0 100 100">
-    <rect x="25" y="55" width="50" height="40" rx="12" fill={c.shirt} />
-    <circle cx="50" cy="38" r="20" fill={c.skin} />
-    {c.cap && <path d="M28 32 Q50 8 72 32 L80 34 L28 34 Z" fill="#222" />}
-  </svg>
-}
-function Create({ onDone }) {
-  const [c, setC] = useState({ name: '', skin: SKINS[0], shirt: SHIRTS[0], cap: true })
-  return <div className="panel">
-    <h2>Create your traveller</h2>
-    <div className="center"><Avatar c={c} size={120} /></div>
-    <input placeholder="Your name" value={c.name} onChange={e => setC({ ...c, name: e.target.value })} />
-    <p>Skin tone</p><div className="row">{SKINS.map(s => <span key={s} className={'swatch' + (c.skin === s ? ' on' : '')} style={{ background: s }} onClick={() => setC({ ...c, skin: s })} />)}</div>
-    <p>Shirt</p><div className="row">{SHIRTS.map(s => <span key={s} className={'swatch' + (c.shirt === s ? ' on' : '')} style={{ background: s }} onClick={() => setC({ ...c, shirt: s })} />)}</div>
-    <label className="row"><input type="checkbox" checked={c.cap} onChange={e => setC({ ...c, cap: e.target.checked })} /> Wear cap</label>
-    <button disabled={!c.name.trim()} onClick={() => onDone(c)}>Fly to Spain</button>
-  </div>
-}
+function ChapterPlayer({ chapterId, stepIndex, onRecord, onStepDone }) {
+  const ch = CHAPTERS[chapterId]
+  if (!ch) return <p className="error">Unknown chapter</p>
+  const step = ch.sequence[stepIndex]
+  if (!step) return <p className="error">Step missing</p>
 
-function WorldMap({ save, onPlay }) {
   return <div className="panel">
-    <div className="hud"><Avatar c={save.character} size={44} /><b>{save.character.name}</b><span className="xp">{save.xp} XP</span></div>
-    <div className="map">
-      {LEVELS.map(l => {
-        const done = save.completed.includes(l.id)
-        const open = !l.requires || save.completed.includes(l.requires)
-        return <button key={l.id} className={'pin ' + (done ? 'done' : open ? 'open' : 'locked')} style={{ left: l.x + '%', top: l.y + '%' }} disabled={!open} onClick={() => onPlay(l.id)}>
-          {done ? '✓' : open ? '●' : '🔒'}<small>{l.name}</small>
-        </button>
-      })}
+    <div className="hud">
+      <span className="muted">Step {stepIndex + 1} of {ch.sequence.length}</span>
+      <span className="muted">{ch.title}</span>
     </div>
-    {LEVELS.map(l => <p key={l.id} className="muted"><b>{l.name}:</b> {l.desc}</p>)}
-  </div>
-}
-
-function Dialogue({ onDone }) {
-  const [i, setI] = useState(0)
-  const [showEn, setShowEn] = useState(false)
-  const line = MADRID_DIALOGUE[i]
-  return <div className="panel">
-    <h2>Madrid Airport</h2>
-    <div className="bubble"><b>{line.who}</b><p className="es">{line.es}</p>{showEn && <p className="muted">{line.en}</p>}</div>
-    <button className="ghost" onClick={() => setShowEn(!showEn)}>{showEn ? 'Hide' : 'Show'} English</button>
-    <button onClick={() => { setShowEn(false); i < MADRID_DIALOGUE.length - 1 ? setI(i + 1) : onDone() }}>{i < MADRID_DIALOGUE.length - 1 ? 'Next' : 'Finish (+20 XP)'}</button>
-  </div>
-}
-
-function SignRunner({ onDone, onQuit }) {
-  const [r, setR] = useState(0), [score, setScore] = useState(0), [fb, setFb] = useState(null), [time, setTime] = useState(8)
-  const finished = r >= SIGN_ROUNDS.length
-  useEffect(() => {
-    if (finished || fb) return
-    if (time <= 0) { pick(null); return }
-    const t = setTimeout(() => setTime(time - 1), 1000); return () => clearTimeout(t)
-  }, [time, fb, finished])
-  function pick(o) {
-    const ok = o === SIGN_ROUNDS[r].en
-    if (ok) setScore(s => s + 1)
-    setFb(ok ? '¡Correcto!' : `It was "${SIGN_ROUNDS[r].en}"`)
-    setTimeout(() => { setFb(null); setR(x => x + 1); setTime(8) }, 900)
-  }
-  if (finished) return <div className="panel center">
-    <h2>Sign Runner complete</h2><p>{score} / {SIGN_ROUNDS.length} correct</p>
-    <p className="muted">English words ending in -al are usually identical in Spanish.</p>
-    {score >= 3 ? <button onClick={onDone}>Continue (+50 XP)</button> : <><p>Get 3+ to pass.</p><button onClick={() => { setR(0); setScore(0) }}>Retry</button></>}
-    <button className="ghost" onClick={onQuit}>Back to map</button>
-  </div>
-  const round = SIGN_ROUNDS[r]
-  return <div className="panel">
-    <div className="hud"><span>Sign {r + 1}/{SIGN_ROUNDS.length}</span><span className="xp">{time}s</span></div>
-    <h2>Find the Spanish for "{round.en}"</h2>
-    <div className="lane">{round.options.map(o => <button key={o} className="sign" disabled={!!fb} onClick={() => pick(o)}>{o}</button>)}</div>
-    {fb && <p className="fb">{fb}</p>}
-  </div>
-}
-
-function Toledo({ onDone }) {
-  const [step, setStep] = useState(0), [wrong, setWrong] = useState(false)
-  return <div className="panel">
-    <h2>Toledo</h2>
-    {step === 0 && <>
-      <div className="bigsign">{TOLEDO.sign}</div>
-      <p>You recognise this word: <b>moderno</b> = modern. Spanish adds -o to many English words.</p>
-      <button onClick={() => setStep(1)}>Walk to the entrance</button>
-    </>}
-    {step === 1 && <>
-      <div className="bubble"><p>{TOLEDO.question}</p></div>
-      {TOLEDO.options.map(o => <button key={o} className="ghost" onClick={() => o === TOLEDO.answer ? setStep(2) : setWrong(true)}>{o}</button>)}
-      {wrong && <p className="fb">Try again: "quiero" = I want, "entrar" = to enter.</p>}
-    </>}
-    {step === 2 && <><p className="es">¡Adelante! (Go ahead!)</p><button onClick={onDone}>Finish (+40 XP)</button></>}
+    {step.kind === 'dialogue' && <Scene id={step.id} onDone={() => onStepDone(step.id)} />}
+    {step.kind === 'activity' && <Activity id={step.id} onFinish={onStepDone} onRecord={onRecord} />}
   </div>
 }
